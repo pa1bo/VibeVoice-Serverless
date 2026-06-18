@@ -391,7 +391,10 @@ def handler_batch(job, output_format):
         log.error(f"Inference failed: {e}")
         import traceback
         log.error(traceback.format_exc())
-        return {"error": str(e), "diag": _collect_diag()}
+        # NOTE: RunPod treats any returned dict with an "error" key as a failed
+        # job and DROPS sibling keys, so diagnostics must NOT live next to "error".
+        # Return under non-"error" keys → job COMPLETES → diag survives in output.
+        return {"status": "error_debug", "caught_error": str(e), "diag": _collect_diag()}
 
 
 def _collect_diag():
