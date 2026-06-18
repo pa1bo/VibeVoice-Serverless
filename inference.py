@@ -258,7 +258,12 @@ class VibeVoiceInference:
                 )
 
             self.model.eval()
-            self.model.set_ddpm_inference_steps(num_steps=10)
+            # Diffusion vocoder steps. Quality scales with this up to a plateau
+            # (~25-30); too few (e.g. 10) sounds robotic/buzzy. Env-tunable so it
+            # can be adjusted from the endpoint without an image rebuild.
+            ddpm_steps = int(os.environ.get("DDPM_INFERENCE_STEPS", "30"))
+            self.model.set_ddpm_inference_steps(num_steps=ddpm_steps)
+            log.info(f"DDPM inference steps: {ddpm_steps}")
 
             log.info(f"Model loaded successfully (sample rate: {config.DEFAULT_SAMPLE_RATE})")
             return self.model
