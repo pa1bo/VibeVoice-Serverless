@@ -10,9 +10,15 @@ mkdir -p /runpod-volume/vibevoice/{models,output,demo/voices,torch_cache,hf_home
 # Torch cache lives on the network volume
 export TORCH_HOME="/runpod-volume/vibevoice/torch_cache"
 
-# NOTE: We do NOT set HF_HOME / HF_HUB_CACHE here unless provided via the
-# endpoint env, so RunPod's smart caching (and any pre-staged volume cache)
-# can resolve the model.
+# The VibeVoice-7B weights are pre-staged in the network volume's HF cache.
+# Point HF at it and force offline mode so it reads the local snapshot instead
+# of calling the (gated) Hub — which otherwise fails with "does not appear to
+# have files named ...". Endpoint env can still override HF_HOME if needed.
+export HF_HOME="${HF_HOME:-/runpod-volume/huggingface-cache}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
+echo "HF_HOME=$HF_HOME  HF_HUB_OFFLINE=$HF_HUB_OFFLINE"
+
 if [ -n "$HF_TOKEN" ]; then
     export HF_TOKEN="$HF_TOKEN"
     echo "HuggingFace token configured"
