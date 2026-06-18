@@ -15,9 +15,15 @@ export TORCH_HOME="/runpod-volume/vibevoice/torch_cache"
 # of calling the (gated) Hub — which otherwise fails with "does not appear to
 # have files named ...". Endpoint env can still override HF_HOME if needed.
 export HF_HOME="${HF_HOME:-/runpod-volume/huggingface-cache}"
+# HF_HUB_CACHE OVERRIDES HF_HOME for locating hub/ models. A stale endpoint env
+# value (e.g. /runpod-volume/vibevoice/hf_cache) sends HF to an empty dir, so it
+# can't find the staged VibeVoice-7B model, falls back to the wrong default
+# tokenizer (Qwen2.5-1.5B), and crashes. Force it unconditionally — never honor
+# an inherited value — so it always derives from HF_HOME.
+export HF_HUB_CACHE="$HF_HOME/hub"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
-echo "HF_HOME=$HF_HOME  HF_HUB_OFFLINE=$HF_HUB_OFFLINE"
+echo "HF_HOME=$HF_HOME  HF_HUB_CACHE=$HF_HUB_CACHE  HF_HUB_OFFLINE=$HF_HUB_OFFLINE"
 
 if [ -n "$HF_TOKEN" ]; then
     export HF_TOKEN="$HF_TOKEN"
