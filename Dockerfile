@@ -16,8 +16,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /workspace/vibevoice
 
+# --- Heavy dependencies baked into the image ---
+# These were previously installed at runtime in bootstrap.sh (into a venv on the
+# network volume), which made the first cold start on each volume take minutes.
+# Baking them into the image makes cold starts fast and volume-independent.
+
+# PyTorch with CUDA 12.8 support
+RUN pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 \
+    --index-url https://download.pytorch.org/whl/cu128
+
+# flash-attention (prebuilt wheel: cp312 / torch2.8 / cu12)
+RUN pip install --no-cache-dir \
+    https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.1/flash_attn-2.8.1+cu12torch2.8cxx11abiTRUE-cp312-cp312-linux_x86_64.whl
+
+# Application requirements (runpod, boto3, soundfile, huggingface_hub, LinaCodec, ...)
 COPY requirements.txt /workspace/vibevoice/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+
+# VibeVoice library
+RUN git clone https://github.com/vibevoice-community/VibeVoice.git /workspace/VibeVoice \
+    && pip install --no-cache-dir /workspace/VibeVoice
 
 COPY bootstrap.sh /workspace/vibevoice/bootstrap.sh
 COPY handler.py /workspace/vibevoice/handler.py
