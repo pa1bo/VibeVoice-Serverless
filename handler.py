@@ -391,7 +391,38 @@ def handler_batch(job, output_format):
         log.error(f"Inference failed: {e}")
         import traceback
         log.error(traceback.format_exc())
-        return {"error": str(e)}
+        return {"error": str(e), "diag": _collect_diag()}
+
+
+def _collect_diag():
+    """Gather HF env + on-disk cache layout to debug offline tokenizer/model loads."""
+    diag = {}
+    try:
+        diag["env"] = {
+            k: os.environ.get(k)
+            for k in ("HF_HOME", "HF_HUB_CACHE", "HF_HUB_OFFLINE",
+                      "TRANSFORMERS_OFFLINE", "TORCH_HOME", "HF_TOKEN")
+            if os.environ.get(k) is not None
+        }
+        # mask token presence only
+        if "HF_TOKEN" in diag["env"]:
+            diag["env"]["HF_TOKEN"] = "<set>"
+        hub = os.path.join(os.environ.get("HF_HOME", "/root/.cache/huggingface"), "hub")
+        diag["hub_path"] = hub
+        diag["hub_exists"] = os.path.isdir(hub)
+        if os.path.isdir(hub):
+            diag["hub_repos"] = sorted(os.listdir(hub))
+            qwen = os.path.join(hub, "models--Qwen--Qwen2.5-1.5B")
+            if os.path.isdir(qwen):
+                snap = os.path.join(qwen, "snapshots")
+                listing = {}
+                for root, _dirs, files in os.walk(qwen):
+                    rel = os.path.relpath(root, qwen)
+                    listing[rel] = sorted(files)
+                diag["qwen_tree"] = listing
+    except Exception as de:
+        diag["diag_error"] = str(de)
+    return diag
 
 def handler(job):
     """Runpod serverless handler (streaming + batch)."""
